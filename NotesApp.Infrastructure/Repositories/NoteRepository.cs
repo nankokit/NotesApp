@@ -1,0 +1,92 @@
+
+using System.Formats.Asn1;
+using Microsoft.EntityFrameworkCore;
+using NotesApp.Domain.Entities;
+using NotesApp.Domain.Interfaces;
+using NotesApp.Infrastructure.Data;
+
+namespace NotesApp.Infrastructure.Repositories;
+
+public class NoteRepository : INoteRepository
+{
+    private readonly NotesDbContext _context;
+
+    public NoteRepository(NotesDbContext context) => _context = context;
+
+    public async Task<IEnumerable<Note>> GetAllAsync(string? search, List<string>? tags, string? sortBy, bool ascending, int page, int pageSize, CancellationToken cancellationToken)
+    {
+        var query = _context.Notes.Include(note => note.Tags).AsQueryable();
+
+        if (!string.IsNullOrEmpty(search))
+        {
+            query = query.Where(n =>
+                n.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                n.Description.Contains(search, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (tags != null && tags.Any())
+        {
+            query = query.Where(n => n.Tags.Any(t => tags.Contains(t.Name)));
+        }
+
+        if (!string.IsNullOrEmpty(sortBy))
+        {
+            query = sortBy.ToLower() switch
+            {
+                "name" => ascending ? query.OrderBy(n => n.Name) : query.OrderByDescending(n => n.Name),
+                "creationaldate" => ascending ? query.OrderBy(n => n.CreationDate) : query.OrderByDescending(n => n.CreationDate),
+                _ => query.OrderBy(n => n.Id)
+            };
+        }
+
+        var skip = (page - 1) * pageSize;
+        return await query.Skip(skip).Take(pageSize).ToListAsync(cancellationToken);
+    }
+    public async Task<Note> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+    {
+        return await _context.Notes
+            .Include(n => n.Tags)
+            .FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
+    }
+
+    public async Task AddAsync(Note note, CancellationToken cancellationToken)
+    {
+
+    }
+
+    public async Task UpdateAsync(Note note, CancellationToken cancellationToken)
+    {
+        if (note == null) throw new ArgumentNullException(nameof(note));
+        _context.Notes.Update(note);
+        await _context.SaveChangesAsync(cancellationToken);
+
+    }
+
+    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var note = await _context.Notes.FindAsync(new object[] { id }, cancellationToken);
+        if (note != null)
+        {
+            _context.Notes.Remove(note);
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    public async Task<int> CountAsync(string? search, List<string>? tags, CancellationToken cancellationToken)
+    {
+        var query = _context.Notes.AsQueryable();
+
+        if (!string.IsNullOrEmpty(search))
+        {
+            query = query.Where(n => n.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                                                n.Description.Contains(search, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (tags != null && tags.Any())
+        {
+            query = query.Where(n => n.Tags.Any(t => tags.Contains(t.Name)));
+        }
+
+        return await query.CountAsync(cancellationToken);
+    }
+}
