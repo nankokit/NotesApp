@@ -1,0 +1,38 @@
+using MediatR;
+using NotesApp.Application.Commands;
+using NotesApp.Domain.Entities;
+using NotesApp.Domain.Interfaces;
+
+namespace NotesApp.Application.Handlers;
+
+public class UpdateNoteCommandHandler : IRequestHandler<UpdateNoteCommand>
+{
+    private readonly INoteRepository _noteRepository;
+    private readonly ITagRepository _tagRepository;
+
+    public UpdateNoteCommandHandler(INoteRepository noteRepository, ITagRepository tagRepository)
+    {
+        _noteRepository = noteRepository;
+        _tagRepository = tagRepository;
+    }
+
+    public async Task Handle(UpdateNoteCommand request, CancellationToken cancellationToken)
+    {
+        var note = await _noteRepository.GetByIdAsync(request.Id, cancellationToken);
+
+        if (note == null) throw new Exception("Note not found");
+
+        note.Name = request.Name;
+        note.Description = request.Description;
+        note.Tags.Clear();
+
+        foreach (var tagName in request.TagNames ?? new List<string>())
+        {
+            var tag = await _tagRepository.GetByNameAsync(tagName) ?? new Tag { Id = Guid.NewGuid(), Name = tagName };
+            note.Tags.Add(tag);
+            if (tag.Id == Guid.Empty) await _tagRepository.AddAsync(tag);
+        }
+
+        await _noteRepository.UpdateAsync(note, cancellationToken);
+    }
+}
