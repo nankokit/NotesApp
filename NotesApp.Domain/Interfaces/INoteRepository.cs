@@ -4,10 +4,10 @@ namespace NotesApp.Domain.Interfaces;
 
 public interface INoteRepository
 {
-    Task<IEnumerable<Note>> GetAllAsync(string search, List<string> tags, string sortBy, bool ascending, int page, int pageSize);
-    Task<Note> GetByIdAsync(Guid id);
-    Task AddAsync(Note note);
-    Task UpdateAsync(Note note);
-    Task DeleteAsync(Guid id);
-    Task<int> CountAsync(string search, List<string> tags);
+    Task<IEnumerable<Note>> GetAllAsync(string? search, List<string>? tags, string? sortBy, bool ascending, int page, int pageSize, CancellationToken cancellationToken);
+    Task<Note> GetByIdAsync(Guid id, CancellationToken cancellationToken);
+    Task AddAsync(Note note, CancellationToken cancellationToken);
+    Task UpdateAsync(Note note, CancellationToken cancellationToken);
+    Task DeleteAsync(Guid id, CancellationToken cancellationToken);
+    Task<int> CountAsync(string? search, List<string>? tags, CancellationToken cancellationToken);
 }
