@@ -16,7 +16,14 @@ public class UpdateNoteCommandValidator : AbstractValidator<UpdateNoteCommand>
         RuleForEach(note => note.TagNames)
             .MaximumLength(50).WithMessage("Tag name cannot exceed 50 characters");
         RuleForEach(note => note.ImageUrls)
-            .MaximumLength(200).WithMessage("Image URL cannot exceed 200 characters")
-            .When(note => note.ImageUrls != null);
+            .Must(BeValidUrl).When(x => x.ImageUrls != null)
+            .WithMessage("Invalid URL format")
+            .MaximumLength(200).WithMessage("Image URL cannot exceed 200 characters");
+    }
+
+    private bool BeValidUrl(string url)
+    {
+        return Uri.TryCreate(url, UriKind.Absolute, out var uriResult)
+                && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
     }
 }

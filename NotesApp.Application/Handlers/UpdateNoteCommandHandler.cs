@@ -28,9 +28,13 @@ public class UpdateNoteCommandHandler : IRequestHandler<UpdateNoteCommand>
 
         foreach (var tagName in request.TagNames ?? new List<string>())
         {
-            var tag = await _tagRepository.GetByNameAsync(tagName) ?? new Tag { Id = Guid.NewGuid(), Name = tagName };
+            var tag = await _tagRepository.GetByNameAsync(tagName, cancellationToken);
+            if (tag == null)
+            {
+                tag = new Tag { Id = Guid.NewGuid(), Name = tagName };
+                await _tagRepository.AddAsync(tag, cancellationToken);
+            }
             note.Tags.Add(tag);
-            if (tag.Id == Guid.Empty) await _tagRepository.AddAsync(tag);
         }
 
         await _noteRepository.UpdateAsync(note, cancellationToken);

@@ -12,8 +12,6 @@ public class DeleteNoteCommandHandler : IRequestHandler<DeleteNoteCommand>
 
     public async Task Handle(DeleteNoteCommand request, CancellationToken cancellationToken)
     {
-        var note = await _noteRepository.GetByIdAsync(request.Id, cancellationToken);
-        if (note == null) throw new Exception("Note not found");
         await _noteRepository.DeleteAsync(request.Id, cancellationToken);
     }
 }
