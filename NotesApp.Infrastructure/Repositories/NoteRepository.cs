@@ -1,5 +1,8 @@
-
-using System.Formats.Asn1;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using NotesApp.Domain.Entities;
 using NotesApp.Domain.Interfaces;
@@ -44,13 +47,18 @@ public class NoteRepository : INoteRepository
     }
     public async Task<Note> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
-        return await _context.Notes
+        var note = await _context.Notes
             .Include(n => n.Tags)
             .FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
+        if (note == null) throw new KeyNotFoundException($"Note with ID {id} not found");
+        return note;
     }
 
     public async Task AddAsync(Note note, CancellationToken cancellationToken)
     {
+        if (note == null) throw new ArgumentNullException(nameof(note));
+        await _context.Notes.AddAsync(note, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
 
     }
 
@@ -65,11 +73,9 @@ public class NoteRepository : INoteRepository
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken)
     {
         var note = await _context.Notes.FindAsync(new object[] { id }, cancellationToken);
-        if (note != null)
-        {
-            _context.Notes.Remove(note);
-            await _context.SaveChangesAsync(cancellationToken);
-        }
+        if (note == null) throw new KeyNotFoundException($"Note with ID {id} not found");
+        _context.Notes.Remove(note);
+        await _context.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<int> CountAsync(string? search, List<string>? tags, CancellationToken cancellationToken)
