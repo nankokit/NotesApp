@@ -37,7 +37,7 @@ public class TagsController : ControllerBase
         return Ok(result);
     }
 
-    [HttpGet("by-name/{name}")]
+    [HttpGet("ByName/{name}")]
     public async Task<ActionResult<TagDto>> GetByName(string name, CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(new GetTagByNameQuery { Name = name }, cancellationToken);

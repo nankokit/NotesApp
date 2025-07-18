@@ -15,7 +15,6 @@ public class NotesDbContext : DbContext
     {
         modelBuilder.Entity<Note>().HasKey(note => note.Id);
         modelBuilder.Entity<Note>().Property(note => note.Name).IsRequired().HasMaxLength(100);
-        modelBuilder.Entity<Note>().Property(note => note.Description).IsRequired().HasMaxLength(1000);
 
         modelBuilder.Entity<Tag>().HasKey(tag => tag.Id);
         modelBuilder.Entity<Tag>().Property(tag => tag.Name).IsRequired().HasMaxLength(100);
@@ -23,7 +22,7 @@ public class NotesDbContext : DbContext
         modelBuilder.Entity<Note>()
             .HasMany(note => note.Tags)
             .WithMany()
-            .UsingEntity(j => j.ToTable("NotesTags"));
+            .UsingEntity(j => j.ToTable("NoteTags"));
 
     }
 }
