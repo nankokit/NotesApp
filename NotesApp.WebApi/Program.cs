@@ -49,18 +49,18 @@ var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
-    var services = scope.ServiceProvider;
-    try
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var context = scope.ServiceProvider.GetRequiredService<NotesDbContext>();
+
+    if (!context.Database.CanConnect())
     {
-        var context = services.GetRequiredService<NotesDbContext>();
-        context.Database.EnsureCreated();
+        logger.LogInformation("Database does not exist. Applying migrations to create it.");
         context.Database.Migrate();
+        logger.LogInformation("Database migrations applied successfully.");
     }
-    catch (Exception ex)
+    else
     {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while creating or migrating the database.");
-        throw;
+        logger.LogInformation("Database exists. Skipping migration application.");
     }
 }
 
