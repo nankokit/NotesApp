@@ -15,6 +15,9 @@ public class GetAllNotesQueryValidator : AbstractValidator<GetAllNotesQuery>
         RuleFor(query => query.SortBy)
             .Must(sortBy => string.IsNullOrEmpty(sortBy) || new[] { "name", "creationdate" }.Contains(sortBy?.ToLower()))
             .WithMessage("SortBy must be 'name' or 'creationDate'");
+        RuleFor(query => query.Search)
+            .MaximumLength(100).WithMessage("Search term cannot exceed 100 characters")
+            .When(query => query.Search != null);
         RuleForEach(query => query.Tags)
             .MaximumLength(50).WithMessage("Tag name cannot exceed 50 characters")
             .When(query => query.Tags != null);

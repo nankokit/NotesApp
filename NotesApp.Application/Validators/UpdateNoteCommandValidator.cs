@@ -10,9 +10,6 @@ public class UpdateNoteCommandValidator : AbstractValidator<UpdateNoteCommand>
         RuleFor(note => note.Name)
             .NotEmpty().WithMessage("Name is required")
             .MaximumLength(100).WithMessage("Name cannot exceed 100 characters");
-        RuleFor(note => note.Description)
-            .NotEmpty().WithMessage("Description is required")
-            .MaximumLength(1000).WithMessage("Description cannot exceed 1000 characters");
         RuleForEach(note => note.TagNames)
             .MaximumLength(50).WithMessage("Tag name cannot exceed 50 characters");
         RuleForEach(note => note.ImageUrls)
