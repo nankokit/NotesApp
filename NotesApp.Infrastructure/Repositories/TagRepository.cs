@@ -30,19 +30,9 @@ public class TagRepository : ITagRepository
         return await query.Skip(skip).Take(pageSize).ToListAsync(cancellationToken);
     }
 
-    public async Task<Tag> GetByIdAsync(Guid id, CancellationToken cancellationToken)
-    {
-        var tag = await _context.Tags.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
-        if (tag == null) throw new KeyNotFoundException($"Tag with ID {id} not found");
-        return tag;
-    }
+    public async Task<Tag?> GetByIdAsync(Guid id, CancellationToken cancellationToken) => await _context.Tags.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
-    public async Task<Tag> GetByNameAsync(string name, CancellationToken cancellationToken)
-    {
-        var tag = await _context.Tags.FirstOrDefaultAsync(t => t.Name == name, cancellationToken);
-        if (tag == null) throw new KeyNotFoundException($"Tag with name {name} not found");
-        return tag;
-    }
+    public async Task<Tag?> GetByNameAsync(string name, CancellationToken cancellationToken) => await _context.Tags.FirstOrDefaultAsync(t => t.Name == name, cancellationToken);
 
     public async Task AddAsync(Tag tag, CancellationToken cancellationToken)
     {

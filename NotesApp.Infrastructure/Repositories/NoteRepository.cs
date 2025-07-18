@@ -45,14 +45,7 @@ public class NoteRepository : INoteRepository
         var skip = (page - 1) * pageSize;
         return await query.Skip(skip).Take(pageSize).ToListAsync(cancellationToken);
     }
-    public async Task<Note> GetByIdAsync(Guid id, CancellationToken cancellationToken)
-    {
-        var note = await _context.Notes
-            .Include(n => n.Tags)
-            .FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
-        if (note == null) throw new KeyNotFoundException($"Note with ID {id} not found");
-        return note;
-    }
+    public async Task<Note?> GetByIdAsync(Guid id, CancellationToken cancellationToken) => await _context.Notes.Include(n => n.Tags).FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
 
     public async Task AddAsync(Note note, CancellationToken cancellationToken)
     {
