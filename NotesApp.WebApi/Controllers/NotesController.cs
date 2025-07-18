@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using MediatR;
@@ -41,6 +42,13 @@ public class NotesController : ControllerBase
     {
         var result = await _mediator.Send(command, cancellationToken);
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+    }
+
+    [HttpPost("bulk")]
+    public async Task<ActionResult<List<NoteDto>>> BulkCreate([FromBody] BulkCreateNoteCommand command, CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(command, cancellationToken);
+        return CreatedAtAction(nameof(GetAll), null, result);
     }
 
     [HttpPut("{id}")]
