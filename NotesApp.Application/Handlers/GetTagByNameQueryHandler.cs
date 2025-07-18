@@ -17,6 +17,10 @@ public class GetTagByNameQueryHandler : IRequestHandler<GetTagByNameQuery, TagDt
     public async Task<TagDto> Handle(GetTagByNameQuery request, CancellationToken cancellationToken)
     {
         var tag = await _tagRepository.GetByNameAsync(request.Name, cancellationToken);
+        if (tag == null)
+        {
+            throw new KeyNotFoundException($"Tag with name '{request.Name}' not found");
+        }
         return new TagDto
         {
             Id = tag.Id,
