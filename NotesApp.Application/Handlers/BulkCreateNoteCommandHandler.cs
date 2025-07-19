@@ -29,6 +29,7 @@ public class BulkCreateNoteCommandHandler : IRequestHandler<BulkCreateNoteComman
                 Id = Guid.NewGuid(),
                 Name = noteCommand.Name,
                 Description = noteCommand.Description,
+                Tags = new List<Tag>(),
                 ImageUrls = noteCommand.ImageUrls,
                 CreationDate = DateTime.UtcNow
             };

@@ -87,7 +87,7 @@ public class NoteRepository : INoteRepository
 
         if (tags != null && tags.Any())
         {
-            query = query.Where(n => n.Tags.Any(t => tags.Contains(t.Name)));
+            query = query.Where(n => n.Tags != null && n.Tags.Any(t => tags.Contains(t.Name)));
         }
 
         return await query.CountAsync(cancellationToken);

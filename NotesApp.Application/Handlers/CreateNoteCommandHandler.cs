@@ -24,6 +24,7 @@ public class CreateNoteCommandHandler : IRequestHandler<CreateNoteCommand, NoteD
             Id = Guid.NewGuid(),
             Name = request.Name,
             Description = request.Description,
+            Tags = new List<Tag>(),
             ImageUrls = request.ImageUrls,
             CreationDate = DateTime.UtcNow
         };

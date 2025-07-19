@@ -21,7 +21,7 @@ public class GetNoteByIdQueryHandler : IRequestHandler<GetNoteByIdQuery, NoteDto
             Id = note.Id,
             Name = note.Name,
             Description = note.Description,
-            TagNames = note.Tags.Select(t => t.Name).ToList(),
+            TagNames = note.Tags?.Select(t => t.Name).ToList(),
             ImageUrls = note.ImageUrls,
             CreationDate = note.CreationDate
         };

@@ -37,9 +37,12 @@ public class UpdateTagCommandHandler : IRequestHandler<UpdateTagCommand>
         var notes = await _noteRepository.GetAllAsync(null, new List<string> { request.Name }, null, true, 1, int.MaxValue, cancellationToken);
         foreach (var note in notes)
         {
-            var tagToUpdate = note.Tags.First(t => t.Name == request.Name);
-            tagToUpdate.Name = request.Name;
-            await _noteRepository.UpdateAsync(note, cancellationToken);
+            if (note.Tags != null)
+            {
+                var tagToUpdate = note.Tags.First(t => t.Name == request.Name);
+                tagToUpdate.Name = request.Name;
+                await _noteRepository.UpdateAsync(note, cancellationToken);
+            }
         }
     }
 }
