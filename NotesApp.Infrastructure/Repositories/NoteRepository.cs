@@ -16,7 +16,10 @@ public class NoteRepository : INoteRepository
 
     public NoteRepository(NotesDbContext context) => _context = context;
 
-    public async Task<IEnumerable<Note>> GetAllAsync(string? search, List<string>? tags, string? sortBy, bool ascending, int page, int pageSize, CancellationToken cancellationToken)
+    public async Task<IEnumerable<Note>> GetAllAsync(
+        string? search, List<string>? tags, string? sortBy,
+        bool ascending, int page, int pageSize,
+        CancellationToken cancellationToken)
     {
         var query = _context.Notes.Include(note => note.Tags).AsQueryable();
 
@@ -26,10 +29,11 @@ public class NoteRepository : INoteRepository
                 n.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
                 n.Description.Contains(search, StringComparison.OrdinalIgnoreCase));
         }
+#warning
 
         if (tags != null && tags.Any())
         {
-            query = query.Where(n => n.Tags.Any(t => tags.Contains(t.Name)));
+            query = query.Where(n => n.Tags != null && n.Tags.Any(t => tags.Contains(t.Name)));
         }
 
         if (!string.IsNullOrEmpty(sortBy))

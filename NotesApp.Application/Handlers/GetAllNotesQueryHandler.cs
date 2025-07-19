@@ -23,7 +23,7 @@ public class GetAllNotesQueryHandler : IRequestHandler<GetAllNotesQuery, PagedRe
                 Id = note.Id,
                 Name = note.Name,
                 Description = note.Description,
-                TagNames = note.Tags.Select(tag => tag.Name).ToList(),
+                TagNames = note.Tags?.Select(tag => tag.Name).ToList(),
                 ImageUrls = note.ImageUrls,
                 CreationDate = note.CreationDate
             }).ToList(),
