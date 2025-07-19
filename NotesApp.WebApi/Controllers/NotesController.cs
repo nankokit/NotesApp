@@ -13,7 +13,7 @@ namespace NotesApp.WebApi.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+//[Authorize]
 public class NotesController : ControllerBase
 {
     private readonly IMediator _mediator;

@@ -10,35 +10,32 @@ using System.Security.Claims;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using BCrypt.Net;
 
 namespace NotesApp.Application.Handlers;
 
-public class LoginCommandHandler : IRequestHandler<LoginCommand, (string AccessToken, string RefreshToken)>
+public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, string>
 {
-    private readonly IUserRepository _userRepository;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IConfiguration _configuration;
 
-    public LoginCommandHandler(IUserRepository userRepository, IRefreshTokenRepository refreshTokenRepository, IConfiguration configuration)
+    public RefreshTokenCommandHandler(IRefreshTokenRepository refreshTokenRepository, IConfiguration configuration)
     {
-        _userRepository = userRepository;
         _refreshTokenRepository = refreshTokenRepository;
         _configuration = configuration;
     }
 
-    public async Task<(string AccessToken, string RefreshToken)> Handle(LoginCommand request, CancellationToken cancellationToken)
+    public async Task<string> Handle(RefreshTokenCommand request, CancellationToken cancellationToken)
     {
-        var user = await _userRepository.GetByUsernameAsync(request.Username, cancellationToken);
-        if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+        var refreshToken = await _refreshTokenRepository.GetByTokenAsync(request.RefreshToken, cancellationToken);
+        if (refreshToken == null || refreshToken.ExpiryDate <= DateTime.UtcNow)
         {
-            throw new UnauthorizedAccessException("Invalid username or password.");
+            throw new UnauthorizedAccessException("Invalid or expired refresh token.");
         }
 
         var claims = new[]
         {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new Claim(JwtRegisteredClaimNames.Name, user.Username),
+            new Claim(JwtRegisteredClaimNames.Sub, refreshToken.UserId.ToString()),
+            new Claim(JwtRegisteredClaimNames.Name, refreshToken.User.Username),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
@@ -55,16 +52,6 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, (string AccessT
             expires: DateTime.UtcNow.AddMinutes(int.Parse(tokenExpiryStr)),
             signingCredentials: creds);
 
-        var refreshToken = new RefreshToken
-        {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            Token = Guid.NewGuid().ToString(),
-            ExpiryDate = DateTime.UtcNow.AddDays(7)
-        };
-
-        await _refreshTokenRepository.AddAsync(refreshToken, cancellationToken);
-
-        return (new JwtSecurityTokenHandler().WriteToken(token), refreshToken.Token);
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

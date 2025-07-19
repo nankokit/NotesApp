@@ -15,6 +15,9 @@ using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using NotesApp.Application.Validators;
+using NotesApp.Application.Commands.UpdateNote;
+using System.Linq;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -57,11 +60,28 @@ builder.Services.AddDbContext<NotesDbContext>(options =>
 builder.Services.AddScoped<INoteRepository, NoteRepository>();
 builder.Services.AddScoped<ITagRepository, TagRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(CreateNoteCommand).Assembly));
 
 builder.Services.AddFluentValidationAutoValidation();
+
+builder.Services.AddValidatorsFromAssemblyContaining<BulkCreateNoteCommandValidator>();
 builder.Services.AddValidatorsFromAssemblyContaining<CreateNoteCommandValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<CreateTagCommandValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<DeleteNoteCommandValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<DeleteTagCommandValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<DeleteUserCommandValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<GetAllNotesQueryValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<GetAllTagsQueryValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<GetNoteByIdQueryValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<GetTagByIdQueryValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<GetUserByIdQueryValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<LoginCommandValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<RefreshTokenCommandValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<RegisterCommandValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<UpdateNoteCommandValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<UpdateTagCommandValidator>();
 
 builder.Services.AddCors(options =>
 {
@@ -71,6 +91,7 @@ builder.Services.AddCors(options =>
     });
 });
 #warning to do extentions
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -96,7 +117,7 @@ using (var scope = app.Services.CreateScope())
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     var context = scope.ServiceProvider.GetRequiredService<NotesDbContext>();
 
-    if (!context.Database.CanConnect())
+    /* if (!context.Database.CanConnect())
     {
         logger.LogInformation("Database does not exist. Applying migrations to create it.");
         context.Database.Migrate();
@@ -105,6 +126,27 @@ using (var scope = app.Services.CreateScope())
     else
     {
         logger.LogInformation("Database exists. Skipping migration application.");
+    } */
+    try
+    {
+        var appliedMigrations = context.Database.GetAppliedMigrations();
+        var allMigrations = context.Database.GetMigrations();
+
+        if (allMigrations.Except(appliedMigrations).Any())
+        {
+            logger.LogInformation("Pending migrations found. Applying migrations.");
+            context.Database.Migrate();
+            logger.LogInformation("Database migrations applied successfully.");
+        }
+        else
+        {
+            logger.LogInformation("Database exists and all migrations are up to date.");
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred while applying database migrations.");
+        throw;
     }
 }
 

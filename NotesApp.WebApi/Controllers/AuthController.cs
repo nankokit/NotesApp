@@ -32,9 +32,16 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginCommand command)
     {
-        var token = await _mediator.Send(command);
+        var (accessToken, refreshToken) = await _mediator.Send(command);
 
-        return Ok(new { Token = token });
+        return Ok(new { AccessToken = accessToken, RefreshToken = refreshToken });
+    }
+
+    [HttpPost("refresh")]
+    public async Task<IActionResult> Refresh([FromBody] RefreshTokenCommand command)
+    {
+        var accessToken = await _mediator.Send(command);
+        return Ok(new { AccessToken = accessToken });
     }
 
     [Authorize]
@@ -60,6 +67,7 @@ public class AuthController : ControllerBase
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         Guid.TryParse(userIdClaim, out var userId);
+
         return userId;
     }
 }
