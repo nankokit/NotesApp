@@ -23,8 +23,8 @@ public class NotesController : ControllerBase
         _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
     }
 
-    [HttpGet]
-    public async Task<ActionResult<PagedResult<NoteDto>>> GetAll([FromQuery] GetAllNotesQuery query, CancellationToken cancellationToken)
+    [HttpPost("search")]
+    public async Task<ActionResult<PagedResult<NoteDto>>> Search([FromBody] GetAllNotesQuery query, CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(query, cancellationToken);
         return Ok(result);
@@ -49,7 +49,7 @@ public class NotesController : ControllerBase
     public async Task<ActionResult<List<NoteDto>>> BulkCreate([FromBody] BulkCreateNoteCommand command, CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(command, cancellationToken);
-        return CreatedAtAction(nameof(GetAll), null, result);
+        return CreatedAtAction(nameof(Search), null, result);
     }
 
     [HttpPut("{id}")]

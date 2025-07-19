@@ -17,7 +17,7 @@ public class NoteRepository : INoteRepository
     public NoteRepository(NotesDbContext context) => _context = context;
 
     public async Task<IEnumerable<Note>> GetAllAsync(
-        string? search, List<string>? tags, string? sortBy,
+        string? search, List<string>? tags, NoteSortField? sortBy,
         bool ascending, int page, int pageSize,
         CancellationToken cancellationToken)
     {
@@ -26,37 +26,39 @@ public class NoteRepository : INoteRepository
         if (!string.IsNullOrEmpty(search))
         {
             query = query.Where(n =>
-                n.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                n.Description.Contains(search, StringComparison.OrdinalIgnoreCase));
+                EF.Functions.Like(n.Name.ToLower(), $"%{search.ToLower()}%") ||
+                EF.Functions.Like(n.Description.ToLower(), $"%{search.ToLower()}%"));
         }
-#warning
 
         if (tags != null && tags.Any())
         {
             query = query.Where(n => n.Tags != null && n.Tags.Any(t => tags.Contains(t.Name)));
         }
 
-        if (!string.IsNullOrEmpty(sortBy))
+        if (sortBy.HasValue)
         {
-            query = sortBy.ToLower() switch
+            query = sortBy.Value switch
             {
-                "name" => ascending ? query.OrderBy(n => n.Name) : query.OrderByDescending(n => n.Name),
-                "creationaldate" => ascending ? query.OrderBy(n => n.CreationDate) : query.OrderByDescending(n => n.CreationDate),
+                NoteSortField.Name => ascending ? query.OrderBy(n => n.Name) : query.OrderByDescending(n => n.Name),
+                NoteSortField.CreationDate => ascending ? query.OrderBy(n => n.CreationDate) : query.OrderByDescending(n => n.CreationDate),
                 _ => query.OrderBy(n => n.Id)
             };
         }
+        else
+            query = query.OrderBy(n => n.Id);
 
         var skip = (page - 1) * pageSize;
         return await query.Skip(skip).Take(pageSize).ToListAsync(cancellationToken);
     }
-    public async Task<Note?> GetByIdAsync(Guid id, CancellationToken cancellationToken) => await _context.Notes.Include(n => n.Tags).FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
+
+    public async Task<Note?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
+        await _context.Notes.Include(n => n.Tags).FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
 
     public async Task AddAsync(Note note, CancellationToken cancellationToken)
     {
         if (note == null) throw new ArgumentNullException(nameof(note));
         await _context.Notes.AddAsync(note, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
-
     }
 
     public async Task UpdateAsync(Note note, CancellationToken cancellationToken)
@@ -64,7 +66,6 @@ public class NoteRepository : INoteRepository
         if (note == null) throw new ArgumentNullException(nameof(note));
         _context.Notes.Update(note);
         await _context.SaveChangesAsync(cancellationToken);
-
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken)
@@ -81,8 +82,9 @@ public class NoteRepository : INoteRepository
 
         if (!string.IsNullOrEmpty(search))
         {
-            query = query.Where(n => n.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                                                n.Description.Contains(search, StringComparison.OrdinalIgnoreCase));
+            query = query.Where(n =>
+                EF.Functions.Like(n.Name.ToLower(), $"%{search.ToLower()}%") ||
+                EF.Functions.Like(n.Description.ToLower(), $"%{search.ToLower()}%"));
         }
 
         if (tags != null && tags.Any())
