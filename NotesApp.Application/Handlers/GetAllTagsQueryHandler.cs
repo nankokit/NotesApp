@@ -1,4 +1,3 @@
-// File: NotesApp.Application/Handlers/GetAllTagsQueryHandler.cs
 using MediatR;
 using NotesApp.Application.DTOs;
 using NotesApp.Application.Queries;
@@ -27,7 +26,9 @@ public class GetAllTagsQueryHandler : IRequestHandler<GetAllTagsQuery, PagedResu
                 Id = tag.Id,
                 Name = tag.Name
             }).ToList(),
-            TotalCount = totalCount
+            TotalCount = totalCount,
+            Page = request.Page,
+            PageSize = request.PageSize
         };
     }
 }
