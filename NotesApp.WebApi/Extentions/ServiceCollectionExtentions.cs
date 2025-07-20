@@ -12,6 +12,9 @@ using System.Text;
 using FluentValidation.AspNetCore;
 using NotesApp.Domain.Interfaces;
 using FluentValidation;
+using Minio;
+using Microsoft.EntityFrameworkCore.Metadata;
+using NotesApp.Infrastructure.Services;
 
 namespace NotesApp.WebApi.Extensions;
 
@@ -126,6 +129,19 @@ public static class ServiceCollectionExtensions
                     }
             });
         });
+        return services;
+    }
+
+    public static IServiceCollection AddMinIO(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddMinio(configureClient => configureClient
+                .WithEndpoint(configuration["Minio:Endpoint"])
+                .WithCredentials(configuration["Minio:AccessKey"], configuration["Minio:SecretKey"])
+                .WithSSL(bool.Parse(configuration["Minio:UseSSL"]))
+                .Build());
+
+        services.AddScoped<IMinioService, MinioService>();
+
         return services;
     }
 }

@@ -19,6 +19,7 @@ builder.Services.AddMediatRConfiguration();
 builder.Services.AddFluentValidationConfiguration();
 builder.Services.AddCorsPolicy();
 builder.Services.AddJwtAuthentication(builder.Configuration);
+builder.Services.AddMinIO(builder.Configuration);
 
 var app = builder.Build();
 

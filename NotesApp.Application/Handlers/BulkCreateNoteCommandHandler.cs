@@ -10,11 +10,13 @@ public class BulkCreateNoteCommandHandler : IRequestHandler<BulkCreateNoteComman
 {
     private readonly INoteRepository _noteRepository;
     private readonly ITagRepository _tagRepository;
+    IMinioService _minioService;
 
-    public BulkCreateNoteCommandHandler(INoteRepository noteRepository, ITagRepository tagRepository)
+    public BulkCreateNoteCommandHandler(INoteRepository noteRepository, ITagRepository tagRepository, IMinioService minioService)
     {
         _noteRepository = noteRepository;
         _tagRepository = tagRepository;
+        _minioService = minioService;
     }
 
     public async Task<List<NoteDto>> Handle(BulkCreateNoteCommand request, CancellationToken cancellationToken)
@@ -30,9 +32,10 @@ public class BulkCreateNoteCommandHandler : IRequestHandler<BulkCreateNoteComman
                 Name = noteCommand.Name,
                 Description = noteCommand.Description,
                 Tags = new List<Tag>(),
-                ImageUrls = noteCommand.ImageUrls,
+                ImageFileNames = noteCommand.ImageFileNames,
                 CreationDate = DateTime.UtcNow
             };
+
             foreach (var tagName in noteCommand.TagNames ?? new List<string>())
             {
                 var tag = await _tagRepository.GetByNameAsync(tagName, cancellationToken);
@@ -43,17 +46,30 @@ public class BulkCreateNoteCommandHandler : IRequestHandler<BulkCreateNoteComman
                 }
                 note.Tags.Add(tag);
             }
+
+            var imageUrls = new List<string>();
+            if (noteCommand.ImageFileNames != null)
+            {
+                foreach (var fileName in noteCommand.ImageFileNames)
+                {
+                    var url = await _minioService.GetPresignedUrlAsync(fileName, cancellationToken);
+                    imageUrls.Add(url);
+                }
+            }
+
             notesToAdd.Add(note);
+
             noteDtos.Add(new NoteDto
             {
                 Id = note.Id,
                 Name = note.Name,
                 Description = note.Description,
                 TagNames = note.Tags.Select(t => t.Name).ToList(),
-                ImageUrls = note.ImageUrls,
+                ImageUrls = imageUrls,
                 CreationDate = note.CreationDate
             });
         }
+
         foreach (var note in notesToAdd)
         {
             await _noteRepository.AddAsync(note, cancellationToken);

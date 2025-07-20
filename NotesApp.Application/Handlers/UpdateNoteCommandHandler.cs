@@ -9,11 +9,13 @@ public class UpdateNoteCommandHandler : IRequestHandler<UpdateNoteCommand>
 {
     private readonly INoteRepository _noteRepository;
     private readonly ITagRepository _tagRepository;
+    private readonly IMinioService _minioService;
 
-    public UpdateNoteCommandHandler(INoteRepository noteRepository, ITagRepository tagRepository)
+    public UpdateNoteCommandHandler(INoteRepository noteRepository, ITagRepository tagRepository, IMinioService minioService)
     {
         _noteRepository = noteRepository;
         _tagRepository = tagRepository;
+        _minioService = minioService;
     }
 
     public async Task Handle(UpdateNoteCommand request, CancellationToken cancellationToken)
@@ -24,7 +26,11 @@ public class UpdateNoteCommandHandler : IRequestHandler<UpdateNoteCommand>
 
         note.Name = request.Name;
         note.Description = request.Description;
-        //note.Tags.Clear();
+
+        note.ImageFileNames = request.ImageFileNames;
+
+        note.Tags?.Clear();
+        note.Tags = new List<Tag>();
 
         foreach (var tagName in request.TagNames ?? new List<string>())
         {
@@ -33,10 +39,6 @@ public class UpdateNoteCommandHandler : IRequestHandler<UpdateNoteCommand>
             {
                 tag = new Tag { Id = Guid.NewGuid(), Name = tagName };
                 await _tagRepository.AddAsync(tag, cancellationToken);
-            }
-            if (note.Tags == null)
-            {
-                note.Tags = new List<Tag>();
             }
             note.Tags.Add(tag);
         }

@@ -1,5 +1,5 @@
 using FluentValidation;
-using FluentValidation.Validators;
+using System.IO;
 
 namespace NotesApp.Application.Commands;
 
@@ -11,16 +11,28 @@ public class CreateNoteCommandValidator : AbstractValidator<CreateNoteCommand>
             .NotEmpty().WithMessage("Name is required")
             .MaximumLength(100).WithMessage("Name cannot exceed 100 characters");
         RuleForEach(note => note.TagNames)
-            .MaximumLength(50).WithMessage("Tag name cannot exceed 50 characters");
-        RuleForEach(note => note.ImageUrls)
-            .Must(BeValidUrl).When(note => note.ImageUrls != null)
-            .WithMessage("Invalid URL format")
-            .MaximumLength(200).WithMessage("Image URL cannot exceed 200 characters");
+            .MaximumLength(50).WithMessage("Tag name cannot exceed 50 characters")
+            .When(note => note.TagNames != null);
+        RuleForEach(note => note.ImageFileNames)
+            .NotEmpty().WithMessage("Image file name cannot be empty")
+            .MaximumLength(200).WithMessage("Image file name cannot exceed 200 characters")
+            .Must(BeValidFileName).WithMessage("Invalid file name format")
+            .When(note => note.ImageFileNames != null);
     }
 
-    private bool BeValidUrl(string url)
+    private bool BeValidFileName(string fileName)
     {
-        return Uri.TryCreate(url, UriKind.Absolute, out var uriResult)
-               && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
+        if (string.IsNullOrWhiteSpace(fileName))
+            return false;
+
+        try
+        {
+            var invalidChars = Path.GetInvalidFileNameChars();
+            return !fileName.Any(c => invalidChars.Contains(c));
+        }
+        catch
+        {
+            return false;
+        }
     }
 }

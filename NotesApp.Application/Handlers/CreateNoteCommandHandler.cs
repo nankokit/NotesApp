@@ -10,11 +10,13 @@ public class CreateNoteCommandHandler : IRequestHandler<CreateNoteCommand, NoteD
 {
     private readonly INoteRepository _noteRepository;
     private readonly ITagRepository _tagRepository;
+    private readonly IMinioService _minioService;
 
-    public CreateNoteCommandHandler(INoteRepository noteRepository, ITagRepository tagRepository)
+    public CreateNoteCommandHandler(INoteRepository noteRepository, ITagRepository tagRepository, IMinioService minioService)
     {
         _noteRepository = noteRepository;
         _tagRepository = tagRepository;
+        _minioService = minioService;
     }
 
     public async Task<NoteDto> Handle(CreateNoteCommand request, CancellationToken cancellationToken)
@@ -25,9 +27,10 @@ public class CreateNoteCommandHandler : IRequestHandler<CreateNoteCommand, NoteD
             Name = request.Name,
             Description = request.Description,
             Tags = new List<Tag>(),
-            ImageUrls = request.ImageUrls,
+            ImageFileNames = request.ImageFileNames,
             CreationDate = DateTime.UtcNow
         };
+
         foreach (var tagName in request.TagNames ?? new List<string>())
         {
             var tag = await _tagRepository.GetByNameAsync(tagName, cancellationToken);
@@ -38,14 +41,26 @@ public class CreateNoteCommandHandler : IRequestHandler<CreateNoteCommand, NoteD
             }
             note.Tags.Add(tag);
         }
+
+        var imageUrls = new List<string>();
+        if (request.ImageFileNames != null)
+        {
+            foreach (var fileName in request.ImageFileNames)
+            {
+                var url = await _minioService.GetPresignedUrlAsync(fileName, cancellationToken);
+                imageUrls.Add(url);
+            }
+        }
+
         await _noteRepository.AddAsync(note, cancellationToken);
+
         return new NoteDto
         {
             Id = note.Id,
             Name = note.Name,
             Description = note.Description,
             TagNames = note.Tags.Select(t => t.Name).ToList(),
-            ImageUrls = note.ImageUrls,
+            ImageUrls = imageUrls,
             CreationDate = note.CreationDate
         };
 
