@@ -32,7 +32,14 @@ public class NoteRepository : INoteRepository
 
         if (tags != null && tags.Any())
         {
-            query = query.Where(n => n.Tags != null && n.Tags.Any(t => tags.Contains(t.Name)));
+            query = query.Where(n =>
+                _context.Set<Dictionary<string, object>>("NoteTag")
+                    .Where(nt => EF.Property<Guid>(nt, "NoteId") == n.Id)
+                    .Join(_context.Tags,
+                        nt => EF.Property<Guid>(nt, "TagsId"),
+                        t => t.Id,
+                        (nt, t) => t.Name)
+                    .Any(tName => tags.Contains(tName)));
         }
 
         if (sortBy.HasValue)
@@ -89,7 +96,14 @@ public class NoteRepository : INoteRepository
 
         if (tags != null && tags.Any())
         {
-            query = query.Where(n => n.Tags != null && n.Tags.Any(t => tags.Contains(t.Name)));
+            query = query.Where(n =>
+                _context.Set<Dictionary<string, object>>("NoteTag")
+                    .Where(nt => EF.Property<Guid>(nt, "NoteId") == n.Id)
+                    .Join(_context.Tags,
+                        nt => EF.Property<Guid>(nt, "TagsId"),
+                        t => t.Id,
+                        (nt, t) => t.Name)
+                    .Any(tName => tags.Contains(tName)));
         }
 
         return await query.CountAsync(cancellationToken);
