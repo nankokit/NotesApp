@@ -15,7 +15,10 @@ public class GetAllNotesQueryValidator : AbstractValidator<GetAllNotesQuery>
             .InclusiveBetween(1, 100).WithMessage("PageSize must be between 1 and 100");
         RuleFor(query => query.SortBy)
             .Must(sortBy => !sortBy.HasValue || Enum.IsDefined(typeof(NoteSortField), sortBy.Value))
-            .WithMessage("SortBy must be one of: Name, CreationDate");
+            .WithMessage("SortBy must be one of: " +
+                        string.Join(", ", Enum.GetValues(typeof(NoteSortField))
+                            .Cast<NoteSortField>()
+                            .Select(v => $"{(int)v} - {v}")));
         RuleFor(query => query.Search)
             .MaximumLength(100).WithMessage("Search term cannot exceed 100 characters")
             .When(query => query.Search != null);
