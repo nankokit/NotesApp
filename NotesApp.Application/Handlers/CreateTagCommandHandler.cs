@@ -1,7 +1,9 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using NotesApp.Application.Commands;
 using NotesApp.Application.DTOs;
 using NotesApp.Domain.Entities;
+using NotesApp.Domain.Exceptions;
 using NotesApp.Domain.Interfaces;
 
 namespace NotesApp.Application.Handlers;
@@ -9,10 +11,12 @@ namespace NotesApp.Application.Handlers;
 public class CreateTagCommandHandler : IRequestHandler<CreateTagCommand, TagDto>
 {
     private readonly ITagRepository _tagRepository;
+    private readonly ILogger<CreateTagCommandHandler> _logger;
 
-    public CreateTagCommandHandler(ITagRepository tagRepository)
+    public CreateTagCommandHandler(ITagRepository tagRepository, ILogger<CreateTagCommandHandler> logger)
     {
-        _tagRepository = tagRepository;
+        _tagRepository = tagRepository ?? throw new ArgumentNullException(nameof(tagRepository));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public async Task<TagDto> Handle(CreateTagCommand request, CancellationToken cancellationToken)
@@ -20,7 +24,8 @@ public class CreateTagCommandHandler : IRequestHandler<CreateTagCommand, TagDto>
         var existingTag = await _tagRepository.GetByNameAsync(request.Name, cancellationToken);
         if (existingTag != null)
         {
-            throw new InvalidOperationException($"Tag with name '{request.Name}' already exists");
+            _logger.LogError("Tag with name {TagName} already exists", request.Name);
+            throw new DuplicateResourceException("Tag", request.Name);
         }
 
         var tag = new Tag
@@ -30,6 +35,8 @@ public class CreateTagCommandHandler : IRequestHandler<CreateTagCommand, TagDto>
         };
 
         await _tagRepository.AddAsync(tag, cancellationToken);
+        _logger.LogInformation("Successfully created tag with ID: {TagId}, Name: {TagName}", tag.Id, tag.Name);
+
         return new TagDto
         {
             Id = tag.Id,

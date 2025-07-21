@@ -1,15 +1,13 @@
 using MediatR;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using NotesApp.Application.Commands;
-using NotesApp.Domain.Entities;
+using NotesApp.Domain.Exceptions;
 using NotesApp.Domain.Interfaces;
-using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace NotesApp.Application.Handlers;
 
@@ -17,11 +15,16 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, s
 {
     private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<RefreshTokenCommandHandler> _logger;
 
-    public RefreshTokenCommandHandler(IRefreshTokenRepository refreshTokenRepository, IConfiguration configuration)
+    public RefreshTokenCommandHandler(
+        IRefreshTokenRepository refreshTokenRepository,
+        IConfiguration configuration,
+        ILogger<RefreshTokenCommandHandler> logger)
     {
-        _refreshTokenRepository = refreshTokenRepository;
-        _configuration = configuration;
+        _refreshTokenRepository = refreshTokenRepository ?? throw new ArgumentNullException(nameof(refreshTokenRepository));
+        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public async Task<string> Handle(RefreshTokenCommand request, CancellationToken cancellationToken)
@@ -29,7 +32,16 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, s
         var refreshToken = await _refreshTokenRepository.GetByTokenAsync(request.RefreshToken, cancellationToken);
         if (refreshToken == null || refreshToken.ExpiryDate <= DateTime.UtcNow)
         {
-            throw new UnauthorizedAccessException("Invalid or expired refresh token.");
+            _logger.LogWarning("Invalid or expired refresh token: {RefreshToken}", request.RefreshToken);
+            throw new NotesApp.Domain.Exceptions.UnauthorizedAccessException("Invalid or expired refresh token");
+        }
+
+        var jwtKey = _configuration["Jwt:Key"];
+        var tokenExpiryStr = _configuration["Jwt:TokenExpiryMinutes"];
+        if (string.IsNullOrEmpty(jwtKey) || string.IsNullOrEmpty(tokenExpiryStr))
+        {
+            _logger.LogError("Jwt:Key or Jwt:TokenExpiryMinutes is missing in configuration");
+            throw new ConfigurationException("JWT configuration is missing");
         }
 
         var claims = new[]
@@ -38,9 +50,6 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, s
             new Claim(JwtRegisteredClaimNames.Name, refreshToken.User.Username),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
-
-        var jwtKey = _configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key is missing in configuration.");
-        var tokenExpiryStr = _configuration["Jwt:TokenExpiryMinutes"] ?? throw new InvalidOperationException("Jwt:TokenExpiryMinutes is missing in configuration.");
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -52,6 +61,9 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, s
             expires: DateTime.UtcNow.AddMinutes(int.Parse(tokenExpiryStr)),
             signingCredentials: creds);
 
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        var accessToken = new JwtSecurityTokenHandler().WriteToken(token);
+        _logger.LogInformation("Successfully generated new access token for user ID: {UserId}", refreshToken.UserId);
+
+        return accessToken;
     }
 }

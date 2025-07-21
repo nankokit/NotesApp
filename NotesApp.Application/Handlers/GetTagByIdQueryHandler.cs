@@ -1,17 +1,24 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using NotesApp.Application.DTOs;
 using NotesApp.Application.Queries;
+using NotesApp.Domain.Exceptions;
 using NotesApp.Domain.Interfaces;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace NotesApp.Application.Handlers;
 
 public class GetTagByIdQueryHandler : IRequestHandler<GetTagByIdQuery, TagDto>
 {
     private readonly ITagRepository _tagRepository;
+    private readonly ILogger<GetTagByIdQueryHandler> _logger;
 
-    public GetTagByIdQueryHandler(ITagRepository tagRepository)
+    public GetTagByIdQueryHandler(ITagRepository tagRepository, ILogger<GetTagByIdQueryHandler> logger)
     {
-        _tagRepository = tagRepository;
+        _tagRepository = tagRepository ?? throw new ArgumentNullException(nameof(tagRepository));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public async Task<TagDto> Handle(GetTagByIdQuery request, CancellationToken cancellationToken)
@@ -19,12 +26,18 @@ public class GetTagByIdQueryHandler : IRequestHandler<GetTagByIdQuery, TagDto>
         var tag = await _tagRepository.GetByIdAsync(request.Id, cancellationToken);
         if (tag == null)
         {
-            throw new KeyNotFoundException($"Tag with ID '{request.Id}' not found");
+            _logger.LogWarning("Tag with ID {TagId} not found", request.Id);
+            throw new ResourceNotFoundException("Tag", request.Id.ToString());
         }
-        return new TagDto
+
+        var tagDto = new TagDto
         {
             Id = tag.Id,
             Name = tag.Name
         };
+
+        _logger.LogInformation("Successfully retrieved tag with ID: {TagId}", tag.Id);
+
+        return tagDto;
     }
 }

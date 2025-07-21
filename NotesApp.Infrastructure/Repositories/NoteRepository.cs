@@ -4,7 +4,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using NotesApp.Domain.Entities;
+using NotesApp.Domain.Exceptions;
 using NotesApp.Domain.Interfaces;
 using NotesApp.Infrastructure.Data;
 
@@ -13,8 +15,13 @@ namespace NotesApp.Infrastructure.Repositories;
 public class NoteRepository : INoteRepository
 {
     private readonly NotesDbContext _context;
+    private readonly ILogger<NoteRepository> _logger;
 
-    public NoteRepository(NotesDbContext context) => _context = context;
+    public NoteRepository(NotesDbContext context, ILogger<NoteRepository> logger)
+    {
+        _context = context ?? throw new ArgumentNullException(nameof(context));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
 
     public async Task<IEnumerable<Note>> GetAllAsync(
         string? search, List<string>? tags, NoteSortField? sortBy,
@@ -55,32 +62,57 @@ public class NoteRepository : INoteRepository
             query = query.OrderBy(n => n.Id);
 
         var skip = (page - 1) * pageSize;
-        return await query.Skip(skip).Take(pageSize).ToListAsync(cancellationToken);
+        var notes = await query.Skip(skip).Take(pageSize).ToListAsync(cancellationToken);
+
+        _logger.LogInformation("Retrieved {Count} notes", notes.Count);
+
+        return notes;
     }
 
-    public async Task<Note?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
-        await _context.Notes.Include(n => n.Tags).FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
+    public async Task<Note?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var note = await _context.Notes.Include(n => n.Tags).FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
+        if (note == null)
+            _logger.LogWarning("Note with ID {Id} not found", id);
+        else
+            _logger.LogInformation("Successfully retrieved note with ID: {Id}", id);
+
+        return note;
+    }
 
     public async Task AddAsync(Note note, CancellationToken cancellationToken)
     {
-        if (note == null) throw new ArgumentNullException(nameof(note));
+        if (note == null)
+        {
+            _logger.LogError("Attempted to add a null note");
+            throw new InvalidInputException("Note cannot be null");
+        }
         await _context.Notes.AddAsync(note, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("Successfully added note with ID: {Id}", note.Id);
     }
 
     public async Task UpdateAsync(Note note, CancellationToken cancellationToken)
     {
-        if (note == null) throw new ArgumentNullException(nameof(note));
+        if (note == null)
+        {
+            _logger.LogError("Attempted to update a null note");
+            throw new InvalidInputException("Note cannot be null");
+        }
         _context.Notes.Update(note);
         await _context.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("Successfully updated note with ID: {Id}", note.Id);
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken)
     {
         var note = await _context.Notes.FindAsync(new object[] { id }, cancellationToken);
-        if (note == null) throw new KeyNotFoundException($"Note with ID {id} not found");
-        _context.Notes.Remove(note);
+        if (note == null)
+            _logger.LogWarning("Note with ID {Id} not found for deletion", id);
+        else
+            _context.Notes.Remove(note);
         await _context.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("Successfully deleted note with ID: {Id}", id);
     }
 
     public async Task<int> CountAsync(string? search, List<string>? tags, CancellationToken cancellationToken)
@@ -106,6 +138,9 @@ public class NoteRepository : INoteRepository
                     .Any(tName => tags.Contains(tName)));
         }
 
-        return await query.CountAsync(cancellationToken);
+        var count = await query.CountAsync(cancellationToken);
+        _logger.LogInformation("Total notes counted: {Count}", count);
+
+        return count;
     }
 }

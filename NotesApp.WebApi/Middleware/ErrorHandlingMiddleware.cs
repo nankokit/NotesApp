@@ -36,7 +36,7 @@ public class ErrorHandlingMiddleware
         var result = exception switch
         {
             ResourceNotFoundException ex => (
-                (HttpStatusCode.NotFound, (object)new
+                HttpStatusCode.NotFound, (object)new
                 {
                     StatusCode = (int)HttpStatusCode.NotFound,
                     ex.ErrorCode,
@@ -44,64 +44,107 @@ public class ErrorHandlingMiddleware
                     ex.ResourceType,
                     ex.Identifier,
                     ex.Timestamp
-                })
+                }
             ),
             InvalidInputException ex => (
-                (HttpStatusCode.BadRequest, (object)new
+                HttpStatusCode.BadRequest, (object)new
                 {
                     StatusCode = (int)HttpStatusCode.BadRequest,
                     ex.ErrorCode,
                     Message = ex.Message,
                     ex.Timestamp
-                })
+                }
             ),
             NotesApp.Domain.Exceptions.UnauthorizedAccessException ex => (
-                (HttpStatusCode.Unauthorized, (object)new
+                HttpStatusCode.Unauthorized, (object)new
                 {
                     StatusCode = (int)HttpStatusCode.Unauthorized,
                     ex.ErrorCode,
                     Message = ex.Message,
                     ex.Timestamp
-                })
+                }
             ),
             ValidationException ex => (
-                (HttpStatusCode.BadRequest, (object)new
+                HttpStatusCode.BadRequest, (object)new
                 {
                     StatusCode = (int)HttpStatusCode.BadRequest,
                     ex.ErrorCode,
                     Message = ex.Message,
                     Errors = ex.Errors,
                     ex.Timestamp
-                })
+                }
+            ),
+            DuplicateResourceException ex => (
+                HttpStatusCode.Conflict, (object)new
+                {
+                    StatusCode = (int)HttpStatusCode.Conflict,
+                    ex.ErrorCode,
+                    Message = ex.Message,
+                    ex.ResourceType,
+                    ex.Identifier,
+                    ex.Timestamp
+                }
+            ),
+            ResourceInUseException ex => (
+                HttpStatusCode.Conflict, (object)new
+                {
+                    StatusCode = (int)HttpStatusCode.Conflict,
+                    ex.ErrorCode,
+                    Message = ex.Message,
+                    ex.ResourceType,
+                    ex.Identifier,
+                    AssociatedCount = ex.AssociatedCount,
+                    ex.Timestamp
+                }
+            ),
+            ConfigurationException ex => (
+                HttpStatusCode.InternalServerError, (object)new
+                {
+                    StatusCode = (int)HttpStatusCode.InternalServerError,
+                    ex.ErrorCode,
+                    Message = ex.Message,
+                    ex.Timestamp
+                }
+            ),
+            FileOperationException ex => (
+                HttpStatusCode.BadRequest, (object)new
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    ex.ErrorCode,
+                    Message = ex.Message,
+                    ex.OperationType,
+                    ex.FileName,
+                    ex.Timestamp
+                }
             ),
             ArgumentNullException ex => (
-                (HttpStatusCode.BadRequest, (object)new
+                HttpStatusCode.BadRequest, (object)new
                 {
                     StatusCode = (int)HttpStatusCode.BadRequest,
                     ErrorCode = "ArgumentNull",
                     Message = "Required parameter is missing",
                     Detail = ex.Message,
                     Timestamp = DateTime.UtcNow
-                })
+                }
             ),
             ArgumentException ex => (
-                (HttpStatusCode.BadRequest, (object)new
+                HttpStatusCode.BadRequest, (object)new
                 {
                     StatusCode = (int)HttpStatusCode.BadRequest,
                     ErrorCode = "ArgumentInvalid",
                     Message = ex.Message,
                     Timestamp = DateTime.UtcNow
-                })
+                }
             ),
             _ => (
-                (HttpStatusCode.InternalServerError, (object)new
+                HttpStatusCode.InternalServerError, (object)new
                 {
                     StatusCode = (int)HttpStatusCode.InternalServerError,
                     ErrorCode = "InternalServerError",
                     Message = "An unexpected error occurred",
                     Detail = exception.Message,
                     Timestamp = DateTime.UtcNow
-                })
+                }
             )
         };
 

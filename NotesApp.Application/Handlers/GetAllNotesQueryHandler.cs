@@ -1,10 +1,9 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using NotesApp.Application.DTOs;
 using NotesApp.Application.Queries;
+using NotesApp.Domain.Exceptions;
 using NotesApp.Domain.Interfaces;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace NotesApp.Application.Handlers;
 
@@ -12,11 +11,16 @@ public class GetAllNotesQueryHandler : IRequestHandler<GetAllNotesQuery, PagedRe
 {
     private readonly INoteRepository _noteRepository;
     private readonly IMinioService _minioService;
+    private readonly ILogger<GetAllNotesQueryHandler> _logger;
 
-    public GetAllNotesQueryHandler(INoteRepository noteRepository, IMinioService minioService)
+    public GetAllNotesQueryHandler(
+        INoteRepository noteRepository,
+        IMinioService minioService,
+        ILogger<GetAllNotesQueryHandler> logger)
     {
-        _noteRepository = noteRepository;
-        _minioService = minioService;
+        _noteRepository = noteRepository ?? throw new ArgumentNullException(nameof(noteRepository));
+        _minioService = minioService ?? throw new ArgumentNullException(nameof(minioService));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public async Task<PagedResult<NoteDto>> Handle(GetAllNotesQuery request, CancellationToken cancellationToken)
@@ -32,8 +36,17 @@ public class GetAllNotesQueryHandler : IRequestHandler<GetAllNotesQuery, PagedRe
             {
                 foreach (var fileName in note.ImageFileNames)
                 {
-                    var url = await _minioService.GetPresignedUrlAsync(fileName, cancellationToken);
-                    imageUrls.Add(url);
+                    try
+                    {
+                        var url = await _minioService.GetPresignedUrlAsync(fileName, cancellationToken);
+                        imageUrls.Add(url);
+                        _logger.LogInformation("Generated presigned URL for image: {FileName}", fileName);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to generate presigned URL for image: {FileName}", fileName);
+                        throw new ResourceNotFoundException("Image", fileName);
+                    }
                 }
             }
 
@@ -48,12 +61,16 @@ public class GetAllNotesQueryHandler : IRequestHandler<GetAllNotesQuery, PagedRe
             });
         }
 
-        return new PagedResult<NoteDto>
+        var result = new PagedResult<NoteDto>
         {
             Items = noteDtos,
             TotalCount = totalCount,
             Page = request.Page,
             PageSize = request.PageSize
         };
+
+        _logger.LogInformation("Successfully retrieved {Count} notes", noteDtos.Count);
+
+        return result;
     }
 }

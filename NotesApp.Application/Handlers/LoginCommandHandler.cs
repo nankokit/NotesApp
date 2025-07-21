@@ -1,16 +1,14 @@
 using MediatR;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using NotesApp.Application.Commands;
 using NotesApp.Domain.Entities;
+using NotesApp.Domain.Exceptions;
 using NotesApp.Domain.Interfaces;
-using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using BCrypt.Net;
 
 namespace NotesApp.Application.Handlers;
 
@@ -19,12 +17,18 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, (string AccessT
     private readonly IUserRepository _userRepository;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<LoginCommandHandler> _logger;
 
-    public LoginCommandHandler(IUserRepository userRepository, IRefreshTokenRepository refreshTokenRepository, IConfiguration configuration)
+    public LoginCommandHandler(
+        IUserRepository userRepository,
+        IRefreshTokenRepository refreshTokenRepository,
+        IConfiguration configuration,
+        ILogger<LoginCommandHandler> logger)
     {
-        _userRepository = userRepository;
-        _refreshTokenRepository = refreshTokenRepository;
-        _configuration = configuration;
+        _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+        _refreshTokenRepository = refreshTokenRepository ?? throw new ArgumentNullException(nameof(refreshTokenRepository));
+        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public async Task<(string AccessToken, string RefreshToken)> Handle(LoginCommand request, CancellationToken cancellationToken)
@@ -32,7 +36,16 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, (string AccessT
         var user = await _userRepository.GetByUsernameAsync(request.Username, cancellationToken);
         if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
         {
-            throw new UnauthorizedAccessException("Invalid username or password.");
+            _logger.LogWarning("Invalid username or password for username: {Username}", request.Username);
+            throw new NotesApp.Domain.Exceptions.UnauthorizedAccessException("Invalid username or password");
+        }
+
+        var jwtKey = _configuration["Jwt:Key"];
+        var tokenExpiryStr = _configuration["Jwt:TokenExpiryMinutes"];
+        if (string.IsNullOrEmpty(jwtKey) || string.IsNullOrEmpty(tokenExpiryStr))
+        {
+            _logger.LogError("Jwt:Key or Jwt:TokenExpiryMinutes is missing in configuration");
+            throw new ConfigurationException("JWT configuration is missing");
         }
 
         var claims = new[]
@@ -41,9 +54,6 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, (string AccessT
             new Claim(JwtRegisteredClaimNames.Name, user.Username),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
-
-        var jwtKey = _configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key is missing in configuration.");
-        var tokenExpiryStr = _configuration["Jwt:TokenExpiryMinutes"] ?? throw new InvalidOperationException("Jwt:TokenExpiryMinutes is missing in configuration.");
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -64,7 +74,9 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, (string AccessT
         };
 
         await _refreshTokenRepository.AddAsync(refreshToken, cancellationToken);
+        var accessToken = new JwtSecurityTokenHandler().WriteToken(token);
+        _logger.LogInformation("Successfully logged in user with ID: {UserId}", user.Id);
 
-        return (new JwtSecurityTokenHandler().WriteToken(token), refreshToken.Token);
+        return (accessToken, refreshToken.Token);
     }
 }

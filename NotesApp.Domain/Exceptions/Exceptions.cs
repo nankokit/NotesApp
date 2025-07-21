@@ -58,3 +58,52 @@ public class ValidationException : NotesAppException
         Errors = errors.AsReadOnly();
     }
 }
+
+public class DuplicateResourceException : NotesAppException
+{
+    public string ResourceType { get; }
+    public string Identifier { get; }
+
+    public DuplicateResourceException(string resourceType, string identifier)
+        : base("DuplicateResource", $"The {resourceType} with identifier {identifier} already exists.")
+    {
+        ResourceType = resourceType;
+        Identifier = identifier;
+    }
+}
+
+public class ResourceInUseException : NotesAppException
+{
+    public string ResourceType { get; }
+    public string Identifier { get; }
+    public int AssociatedCount { get; }
+
+    public ResourceInUseException(string resourceType, string identifier, int associatedCount)
+        : base("ResourceInUse", $"Cannot delete {resourceType} with identifier {identifier} because it is associated with {associatedCount} resource(s).")
+    {
+        ResourceType = resourceType;
+        Identifier = identifier;
+        AssociatedCount = associatedCount;
+    }
+}
+
+public class ConfigurationException : NotesAppException
+{
+    public ConfigurationException(string message)
+        : base("ConfigurationError", message)
+    {
+    }
+}
+
+public class FileOperationException : NotesAppException
+{
+    public string OperationType { get; }
+    public string FileName { get; }
+
+    public FileOperationException(string operationType, string fileName, string message, Exception? innerException = null)
+        : base("FileOperationError", message, innerException)
+    {
+        OperationType = operationType;
+        FileName = fileName;
+    }
+}
