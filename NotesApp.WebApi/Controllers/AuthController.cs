@@ -41,6 +41,7 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Refresh([FromBody] RefreshTokenCommand command)
     {
         var accessToken = await _mediator.Send(command);
+
         return Ok(new { AccessToken = accessToken });
     }
 

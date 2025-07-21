@@ -14,7 +14,7 @@ namespace NotesApp.WebApi.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-//[Authorize]
+[Authorize]
 public class TagsController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -28,6 +28,7 @@ public class TagsController : ControllerBase
     public async Task<ActionResult<IEnumerable<TagDto>>> GetAll(CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(new GetAllTagsQuery(), cancellationToken);
+
         return Ok(result);
     }
 
@@ -35,6 +36,7 @@ public class TagsController : ControllerBase
     public async Task<ActionResult<TagDto>> GetById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(new GetTagByIdQuery { Id = id }, cancellationToken);
+
         return Ok(result);
     }
 
@@ -42,6 +44,7 @@ public class TagsController : ControllerBase
     public async Task<ActionResult<TagDto>> GetByName(string name, CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(new GetTagByNameQuery { Name = name }, cancellationToken);
+
         return Ok(result);
     }
 
@@ -49,6 +52,7 @@ public class TagsController : ControllerBase
     public async Task<ActionResult<TagDto>> Create([FromBody] CreateTagCommand command, CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(command, cancellationToken);
+
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
@@ -60,6 +64,7 @@ public class TagsController : ControllerBase
             return BadRequest("Route ID does not match command ID");
         }
         await _mediator.Send(command, cancellationToken);
+
         return NoContent();
     }
 
@@ -67,6 +72,7 @@ public class TagsController : ControllerBase
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         await _mediator.Send(new DeleteTagCommand { Id = id }, cancellationToken);
+
         return NoContent();
     }
 }
