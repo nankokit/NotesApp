@@ -4,9 +4,6 @@ using NotesApp.Application.DTOs;
 using NotesApp.Application.Queries;
 using NotesApp.Domain.Exceptions;
 using NotesApp.Domain.Interfaces;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace NotesApp.Application.Handlers;
 

@@ -3,9 +3,9 @@ namespace NotesApp.Application.Commands;
 
 public class UpdateNoteCommand : IRequest
 {
-    public Guid Id { get; set; }
+    public required Guid Id { get; set; }
     public required string Name { get; set; }
-    public required string Description { get; set; }
+    public string? Description { get; set; }
     public List<string>? TagNames { get; set; }
     public List<string>? ImageFileNames { get; set; }
 }
