@@ -8,6 +8,8 @@ public class NotesDbContext : DbContext
 {
     public DbSet<Note> Notes { set; get; }
     public DbSet<Tag> Tags { get; set; }
+    public DbSet<User> Users { get; set; }
+    public DbSet<RefreshToken> RefreshTokens { get; set; }
 
     public NotesDbContext(DbContextOptions<NotesDbContext> options) : base(options) { }
 
@@ -24,5 +26,15 @@ public class NotesDbContext : DbContext
             .WithMany()
             .UsingEntity(j => j.ToTable("NoteTags"));
 
+        modelBuilder.Entity<User>().HasKey(user => user.Id);
+        modelBuilder.Entity<User>().Property(user => user.Username).IsRequired().HasMaxLength(50);
+        modelBuilder.Entity<User>().Property(user => user.PasswordHash).IsRequired();
+
+        modelBuilder.Entity<RefreshToken>().HasKey(rt => rt.Id);
+        modelBuilder.Entity<RefreshToken>().Property(rt => rt.UserId).IsRequired();
+        modelBuilder.Entity<RefreshToken>().Property(rt => rt.Token).IsRequired();
+        modelBuilder.Entity<RefreshToken>().Property(rt => rt.ExpiryDate).IsRequired();
+        modelBuilder.Entity<RefreshToken>().HasOne(rt => rt.User).WithMany().HasForeignKey(rt => rt.UserId);
+        modelBuilder.Entity<RefreshToken>().ToTable("RefreshTokens");
     }
 }

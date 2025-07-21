@@ -1,49 +1,26 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models;
+using Microsoft.Extensions.Logging;
 using NotesApp.Infrastructure.Data;
-using NotesApp.Infrastructure.Repositories;
-using NotesApp.Application.Commands;
-using NotesApp.Domain.Interfaces;
-using FluentValidation;
-using FluentValidation.AspNetCore;
+using NotesApp.WebApi.Middleware;
+using NotesApp.WebApi.Extensions;
+using System.Linq;
+using System;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
-using System;
-using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "Notes API",
-        Version = "v1"
-    });
-});
-
-builder.Services.AddDbContext<NotesDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-builder.Services.AddScoped<INoteRepository, NoteRepository>();
-builder.Services.AddScoped<ITagRepository, TagRepository>();
-
-builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(CreateNoteCommand).Assembly));
-
-builder.Services.AddFluentValidationAutoValidation();
-builder.Services.AddValidatorsFromAssemblyContaining<CreateNoteCommandValidator>();
-
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll", policy =>
-    {
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
-    });
-});
+builder.Services.AddSwaggerConfiguration();
+builder.Services.AddDatabase(builder.Configuration);
+builder.Services.AddRepositories();
+builder.Services.AddMediatRConfiguration();
+builder.Services.AddFluentValidationConfiguration();
+builder.Services.AddCorsPolicy();
+builder.Services.AddJwtAuthentication(builder.Configuration);
+builder.Services.AddMinIO(builder.Configuration);
 
 var app = builder.Build();
 
@@ -52,15 +29,26 @@ using (var scope = app.Services.CreateScope())
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     var context = scope.ServiceProvider.GetRequiredService<NotesDbContext>();
 
-    if (!context.Database.CanConnect())
+    try
     {
-        logger.LogInformation("Database does not exist. Applying migrations to create it.");
-        context.Database.Migrate();
-        logger.LogInformation("Database migrations applied successfully.");
+        var appliedMigrations = context.Database.GetAppliedMigrations();
+        var allMigrations = context.Database.GetMigrations();
+
+        if (allMigrations.Except(appliedMigrations).Any())
+        {
+            logger.LogInformation("Pending migrations found. Applying migrations.");
+            context.Database.Migrate();
+            logger.LogInformation("Database migrations applied successfully.");
+        }
+        else
+        {
+            logger.LogInformation("Database exists and all migrations are up to date.");
+        }
     }
-    else
+    catch (Exception ex)
     {
-        logger.LogInformation("Database exists. Skipping migration application.");
+        logger.LogError(ex, "An error occurred while applying database migrations.");
+        throw;
     }
 }
 
@@ -69,6 +57,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Notes API v1"));
 }
+
+app.UseMiddleware<ErrorHandlingMiddleware>();
 
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
