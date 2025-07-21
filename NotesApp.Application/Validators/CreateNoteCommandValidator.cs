@@ -10,6 +10,8 @@ public class CreateNoteCommandValidator : AbstractValidator<CreateNoteCommand>
         RuleFor(note => note.Name)
             .NotEmpty().WithMessage("Name is required")
             .MaximumLength(100).WithMessage("Name cannot exceed 100 characters");
+        RuleFor(note => note.Description)
+            .NotEmpty().WithMessage("Description is required");
         RuleForEach(note => note.TagNames)
             .MaximumLength(50).WithMessage("Tag name cannot exceed 50 characters")
             .When(note => note.TagNames != null);

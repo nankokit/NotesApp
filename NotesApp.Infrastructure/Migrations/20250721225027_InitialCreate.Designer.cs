@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace NotesApp.Infrastructure.Migrations
 {
     [DbContext(typeof(NotesDbContext))]
-    [Migration("20250720195136_FixNoteEntity")]
-    partial class FixNoteEntity
+    [Migration("20250721225027_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

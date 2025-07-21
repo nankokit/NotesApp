@@ -6,6 +6,7 @@ COPY NotesApp.WebApi/NotesApp.WebApi.csproj NotesApp.WebApi/
 COPY NotesApp.Application/NotesApp.Application.csproj NotesApp.Application/
 COPY NotesApp.Infrastructure/NotesApp.Infrastructure.csproj NotesApp.Infrastructure/
 COPY NotesApp.Domain/NotesApp.Domain.csproj NotesApp.Domain/
+COPY NotesApp.Tests/NotesApp.Tests.csproj NotesApp.Tests/
 
 RUN dotnet restore
 

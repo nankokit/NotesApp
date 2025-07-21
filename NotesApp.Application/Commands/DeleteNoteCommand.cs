@@ -3,5 +3,5 @@ namespace NotesApp.Application.Commands;
 
 public class DeleteNoteCommand : IRequest
 {
-    public Guid Id { get; set; }
+    public required Guid Id { get; set; }
 }
